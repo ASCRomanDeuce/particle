@@ -1,0 +1,442 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.integrate
+import field_configurations as config
+
+
+class ElectromagneticField:
+
+    def __init__(self):
+        self._e_field = None
+        self._h_field = None
+        
+    def crossed(self, e_magn, h_magn):
+        def e_f(t, y):
+            return e_magn*config.E_crossed(t, y, e_magn)
+
+        def h_f(t, y):
+            return h_magn*config.H_crossed(t, y, h_magn)
+        
+        self._e_field = e_f
+        self._h_field = h_f
+        
+    def linwave(self, k, e_magn, h_magn):
+        omega = np.sqrt(k*k)
+        def e_f(t, y):
+            return e_magn*config.E_linear(t, y, k, tau, omega, e_magn)
+
+        def h_f(t, y):
+            return e_magn*config.H_linear(t, y, k, tau, omega, h_magn)
+        
+        self._e_field = e_f
+        self._h_field = h_f
+    
+    def circwave(self, k, e_magn, h_magn):
+        omega = np.sqrt(k*k)
+        def e_f(t, y):
+            return e_magn*config.E_circular(t, y, k, tau, omega, e_magn)
+
+        def h_f(t, y):
+            return e_magn*config.H_circular(t, y, k, tau, omega, h_magn)
+        
+        self._e_field = e_f
+        self._h_field = h_f
+        
+    def electric(self, t, y):
+        return self._e_field(t, y)  
+
+    def magnetic(self, t, y):
+        return self._h_field(t, y)
+      
+    def componentE(self, t, x, y, z, mode):
+        return self.electric(t, (x, y, z))[mode]
+    
+    def componentH(self, t, x, y, z, mode):
+        return self.magnetic(t, (x, y, z))[mode]
+    
+    def moduleE(self, t, x, y, z):
+        return np.linalg.norm(self.electric(t, (x, y, z)))
+    
+    def moduleH(self, t, x, y, z):
+        return np.linalg.norm(self.magnetic(t, (x, y, z)))
+
+    def intensity(self, t, x, y, z):
+        return (self.moduleE(t, x, y, z)**2 + self.moduleH(t, x, y, z)**2) / (4 * np.pi)
+    
+    def plot_intensity(self, axes):
+        ax1 = np.arange(-5, 5, 0.1)
+        ax2 = np.arange(-5, 5, 0.1) 
+        
+        aa1, aa2 = np.meshgrid(ax1, ax2, sparse=True)
+        
+        vect_intensity = np.vectorize(self.intensity)
+        
+        if axes == 'xt':
+            getintensity = vect_intensity(aa2, aa1, 0, 0) 
+             
+        elif axes == 'yt':
+            getintensity = vect_intensity(aa2, 0, aa1, 0)
+            
+        elif axes == 'zt':
+            getintensity = vect_intensity(aa2, 0, 0, aa1)
+            
+                
+        elif axes == 'xy':
+            getintensity = vect_intensity(0, aa1, aa2, 0)
+                    
+        elif axes == 'xz':
+            getintensity = vect_intensity(0, aa1, 0, aa2)
+        
+        elif axes == 'yz':
+            getintensity = vect_intensity(0, 0, aa1, aa2)
+            
+
+        label1 = axes[0]
+        label2 = axes[1]
+        
+        plt.pcolormesh(ax1, ax2, getintensity, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.title(f'Field intensity in the ${label1}{label2}$ plane: crossed fields')
+        
+        
+        plt.savefig(f'crossed-intensity-{label1}{label2}-plane.jpg')
+        
+    def plot_E(self, axes):
+        
+        ax1 = np.linspace(0, 100, 100)
+        ax2 = np.linspace(0, 100, 100) 
+        Ex = np.empty((len(ax1), len(ax2)))
+        Ey = np.empty((len(ax1), len(ax2)))
+        Ez = np.empty((len(ax1), len(ax2)))
+        
+        if axes == 'xt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(ax1[i], (ax2[j], 0, 0))[0]
+                    Ey[i][j] = self.electric(ax1[i], (ax2[j], 0, 0))[1]
+                    Ez[i][j] = self.electric(ax1[i], (ax2[j], 0, 0))[2]
+                    
+        elif axes == 'yt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(ax1[i], (0, ax2[j], 0))[0]
+                    Ey[i][j] = self.electric(ax1[i], (0, ax2[j], 0))[1]
+                    Ez[i][j] = self.electric(ax1[i], (0, ax2[j], 0))[2]
+                    
+        elif axes == 'zt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(ax2[j], (0, 0, ax1[i]))[0]
+                    Ey[i][j] = self.electric(ax2[j], (0, 0, ax1[i]))[1]
+                    Ez[i][j] = self.electric(ax2[j], (0, 0, ax1[i]))[2]
+                    
+                    
+        elif axes == 'xy':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(0, (ax2[j], ax1[i], 0))[0]
+                    Ey[i][j] = self.electric(0, (ax2[j], ax1[i], 0))[1]
+                    Ez[i][j] = self.electric(0, (ax2[j], ax1[i], 0))[2]
+                    
+        elif axes == 'xz':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(0, (ax2[j], 0, ax1[i]))[0]
+                    Ey[i][j] = self.electric(0, (ax2[j], 0, ax1[i]))[1]
+                    Ez[i][j] = self.electric(0, (ax2[j], 0, ax1[i]))[2]
+                    
+        elif axes == 'yz':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Ex[i][j] = self.electric(0, (0, ax2[j], ax1[i]))[0]
+                    Ey[i][j] = self.electric(0, (0, ax2[j], ax1[i]))[1]
+                    Ez[i][j] = self.electric(0, (0, ax2[j], ax1[i]))[2]
+
+        
+        label1 = axes[0]
+        label2 = axes[1]
+        
+        plt.figure()
+
+        # Ex
+        plt.subplot(131)
+        plt.pcolormesh(ax1, ax2, Ex, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$E_x\ {label1}{label2}$ plane')
+        # Ey
+        plt.subplot(132)
+        plt.pcolormesh(ax1, ax2, Ey, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$E_y\ {label1}{label2}$ plane')
+        # Ez
+        plt.subplot(133)
+        plt.pcolormesh(ax1, ax2, Ez, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$E_z\ {label1}{label2}$ plane')
+        
+        
+        plt.tight_layout()
+        plt.savefig(f'E-{label1}{label2}-plane.jpg')
+    
+    def plot_H(self, axes):
+        
+        ax1 = np.linspace(0, 100, 100)
+        ax2 = np.linspace(0, 100, 100)
+        
+        
+        Hx = np.empty((len(ax1), len(ax2)))
+        Hy = np.empty((len(ax1), len(ax2)))
+        Hz = np.empty((len(ax1), len(ax2)))
+        
+        if axes == 'xt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(ax1[i], (ax2[j], 0, 0))[0]
+                    Hy[i][j] = self.magnetic(ax1[i], (ax2[j], 0, 0))[1]
+                    Hz[i][j] = self.magnetic(ax1[i], (ax2[j], 0, 0))[2]
+                    
+        elif axes == 'yt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(ax1[i], (0, ax2[j], 0))[0]
+                    Hy[i][j] = self.magnetic(ax1[i], (0, ax2[j], 0))[1]
+                    Hz[i][j] = self.magnetic(ax1[i], (0, ax2[j], 0))[2]
+                    
+        elif axes == 'zt':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(ax2[j], (0, 0, ax1[i]))[0]
+                    Hy[i][j] = self.magnetic(ax2[j], (0, 0, ax1[i]))[1]
+                    Hz[i][j] = self.magnetic(ax2[j], (0, 0, ax1[i]))[2]
+                    
+                    
+        elif axes == 'xy':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(0, (ax2[j], ax1[i], 0))[0]
+                    Hy[i][j] = self.magnetic(0, (ax2[j], ax1[i], 0))[1]
+                    Hz[i][j] = self.magnetic(0, (ax2[j], ax1[i], 0))[2]
+                    
+        elif axes == 'xz':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(0, (ax2[j], 0, ax1[i]))[0]
+                    Hy[i][j] = self.magnetic(0, (ax2[j], 0, ax1[i]))[1]
+                    Hz[i][j] = self.magnetic(0, (ax2[j], 0, ax1[i]))[2]
+                    
+        elif axes == 'yz':
+            for i in range(len(ax1)):
+                for j in range(len(ax2)):
+                    Hx[i][j] = self.magnetic(0, (0, ax2[j], ax1[i]))[0]
+                    Hy[i][j] = self.magnetic(0, (0, ax2[j], ax1[i]))[1]
+                    Hz[i][j] = self.magnetic(0, (0, ax2[j], ax1[i]))[2]
+
+        
+        label1 = axes[0]
+        label2 = axes[1]
+        
+        plt.figure()
+
+        # Hx
+        plt.subplot(131)
+        plt.pcolormesh(ax1, ax2, Hx, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$H_x\ {label1}{label2}$ plane')
+        # Hy
+        plt.subplot(132)
+        plt.pcolormesh(ax1, ax2, Hy, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$H_y\ {label1}{label2}$ plane')
+        # Hz
+        plt.subplot(133)
+        plt.pcolormesh(ax1, ax2, Hz, cmap="plasma", shading='auto')
+        plt.xlabel(f'$2\\pi {label1}/\\lambda_0$')
+        plt.ylabel(f'$2\\pi {label2}/\\lambda_0$')
+        plt.title(f'$H_z\ {label1}{label2}$ plane')
+        
+        
+        plt.tight_layout()
+        plt.savefig(f'H-{label1}{label2}-plane.jpg')
+
+
+
+class Particle:
+    def __init__(self, r0, p0, q, m):
+        
+        self.r0 = np.array(r0)
+        self.p0 = np.array(p0)
+        
+        self.charge = q
+        self.mass = m
+        
+        self.y0 = np.concatenate((self.r0, self.p0))
+
+
+    def motion_equations(self, time, field):
+        
+        def gamma(p):
+            return np.sqrt(1 + np.dot(p, p))
+
+        def rhs(t, y):
+            
+            r = y[:3] # x, y, z
+            p = y[3:] # px, py, pz
+            
+            dr = p / (self.mass * gamma(p))
+            dp = self.charge * (field.electric(t, r) + np.cross(p, field.magnetic(t, r) / (self.mass * gamma(p))))
+            
+            return np.concatenate((dr, dp))
+
+
+        self.sol = scipy.integrate.solve_ivp(
+            rhs,
+            (time[0], time[-1]),
+            y0 = self.y0,
+            t_eval = time,
+            method = 'RK45'
+            )
+
+        self.t = self.sol.t
+        
+        self.r = self.sol.y[:3]
+        self.p = self.sol.y[3:]
+        
+        self.gamma = np.sqrt(1.0 + np.sum(self.p**2, axis = 0))
+
+    
+    def plot3D(self):
+        
+        x = self.r[0]
+        y = self.r[1]
+        z = self.r[2]
+        
+        plt.figure()
+        ax = plt.axes(projection='3d')
+        ax.plot(x, y, z, label='parametric trajectory')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.set_xlim(-1.0, 2.0)
+        plt.title('3D trajectory: crossed fields')
+        plt.savefig('crossed-3D-trajectory.jpg')
+        
+    def timeplot2D(self):
+        
+        x = self.r[0]
+        y = self.r[1]
+        z = self.r[2]
+        t = time
+        
+        plt.figure()
+        plt.plot(t, x, linewidth = 1, label = 'x', color = 'r')
+        plt.plot(t, y, linewidth = 1, label = 'y', color = 'g')
+        plt.plot(t, z, linewidth = 1, label = 'z', color = 'b')
+        
+        plt.title('Particle motion in crossed fields')
+
+        plt.xlabel('time')
+        plt.ylabel('displacement')
+        plt.legend()
+        plt.savefig('crossed-time-trajectory.jpg')
+        
+    def plot2D(self, axes):
+        
+        x = self.r[0]
+        y = self.r[1]
+        z = self.r[2]
+        
+        px0 = self.p0[0]
+        py0 = self.p0[1]
+        pz0 = self.p0[2]
+        
+        plt.figure()
+        
+        if axes == 'xy':
+            plt.plot(x, y, linewidth = 1, color = 'r')
+            plt.xlabel('x ($p_{x0}$ = %d)' %px0)
+            plt.ylabel('y ($p_{y0}$ = %d)' %py0)
+            
+        elif axes == 'xz':
+            plt.plot(x, z, linewidth = 1, color = 'r')
+            plt.xlabel('x ($p_{x0}$ = %d)' %px0)
+            plt.ylabel('z ($p_{z0}$ = %d)' %pz0)
+        
+        elif axes == 'yz':
+            plt.plot(y, z, linewidth = 1, color = 'r')
+            plt.xlabel('y ($p_{y0}$ = %d)' %py0)
+            plt.ylabel('z ($p_{z0}$ = %d)' %pz0)
+            
+
+        plt.title(f'Particle motion in the ${axes}$-plane: crossed fields')
+        plt.savefig(f'crossed-{axes}-trajectory.jpg')
+    
+    def plot_momenta(self):
+        
+        plt.figure()
+        plt.suptitle('Particle motion: crossed fields')
+
+        plt.subplot(221)
+        plt.plot( self.t, self.p[0], linewidth=1, color='r')
+        plt.xlabel('time')
+        plt.ylabel('$p_x$')
+
+        plt.subplot(222)
+        plt.plot(self.t, self.p[1], linewidth=1, color='r')
+        plt.xlabel('time')
+        plt.ylabel('$p_y$')
+
+        plt.subplot(223)
+        plt.plot(self.t, self.p[2], linewidth=1, color='r')
+        plt.xlabel('time')
+        plt.ylabel('$p_z$')
+
+        plt.subplot(224)
+        plt.plot(self.t, self.gamma, linewidth=1, color='r')
+        plt.xlabel('time')
+        plt.ylabel('$\\gamma$')
+        
+        plt.tight_layout()
+        plt.savefig('crossed-momenta-and-energy.jpg')
+    
+
+# Field initial data
+#omega = 1.0
+#k = np.array([1.0, 0.0, 0.0])
+
+Ecr = 5e-2 
+Hcr = 1.0
+
+E = 10.0
+H = 10.0
+
+tau = 2000.0
+
+emfield = ElectromagneticField() 
+emfield.crossed(Ecr, Hcr)# 'crossed', 'circwave', 'linwave'
+emfield.plot_intensity('xt') # 'xy', 'xz', 'yz', 'xt', 'yt', 'zt'
+#emfield.plot_E('xt') # 'xy', 'xz', 'yz', 'xt', 'yt', 'zt'
+emfield.plot_H('xt') # 'xy', 'xz', 'yz', 'xt', 'yt', 'zt'
+
+
+r0 = np.array([0.0, 0.0, 0.0])
+p0 = np.array([0.0, 10.0, 0.0])
+q = 1.0
+m = 1.0
+
+
+pt = Particle(r0, p0, q, m)
+
+time = np.linspace(0, 500, 5000)
+pt.motion_equations(time, emfield)
+pt.plot3D()
+pt.plot2D('xy') # 'xy', 'xz', 'yz'
+pt.plot2D('xz')
+pt.plot2D('yz')
+pt.timeplot2D()
+pt.plot_momenta()
