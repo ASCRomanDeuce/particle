@@ -1,0 +1,31 @@
+import numpy as np
+
+
+
+def E_crossed(t, r, Ecr):
+    return np.array([1.0, 0.0, 0.0]) * Ecr
+
+def H_crossed(t, r, Hcr):
+    return np.array([0.0, 1.0, 0.0]) * Hcr
+
+def E_linear(t, r, k, tau, omega, E):
+    Ex = np.cos(omega*t - np.dot(k,r)) 
+    Earr = np.array([Ex, 0.0, 0.0])
+    return Earr * E * np.exp(-t**2/tau**2)
+
+def H_linear(t, r, k, tau, omega, H):
+    Hy = np.cos(omega*t - np.dot(k,r))
+    Harr = np.array([0.0, Hy, 0.0])
+    return Harr * H * np.exp(-t**2/tau**2)
+
+def E_circular(t, r, k, tau, omega, E): 
+    Ex = np.cos(omega*t - np.dot(k,r))
+    Ey = np.sin(omega*t - np.dot(k,r))
+    Earr = np.array([Ex, Ey, 0.0])
+    return Earr * np.exp(-t**2/tau**2) * E
+
+def H_circular(t, r, k, tau, omega, H):
+    Hy = np.cos(omega*t - np.dot(k,r))
+    Hx = -np.sin(omega*t - np.dot(k,r)) #Hx = -Ey
+    Harr = np.array([Hx, Hy, 0.0])
+    return Harr * np.exp(-t**2/tau**2) * H
