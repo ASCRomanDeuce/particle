@@ -47,12 +47,6 @@ class ElectromagneticField:
 
     def magnetic(self, t, y):
         return self._h_field(t, y)
-      
-    def componentE(self, t, x, y, z, mode):
-        return self.electric(t, (x, y, z))[mode]
-    
-    def componentH(self, t, x, y, z, mode):
-        return self.magnetic(t, (x, y, z))[mode]
     
     def moduleE(self, t, x, y, z):
         return np.linalg.norm(self.electric(t, (x, y, z)))
